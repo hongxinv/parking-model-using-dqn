@@ -80,8 +80,11 @@ class ParkingLot(gym.Env): #by passing env to the ParkingLot class, we are inher
         # terminated is a boolean of whether agent has reached target
         terminated = np.array_equal(self._agent_location, self._target_location)
         
-        # +1 for correct parking, -1 for time spent, -3 for collisions/being in the wrong parking spot
-        reward = 1 if terminated else 0 if self._agent_location[0] == 1 else -3
+        # Rewards
+        # +1 for reaching target square
+        # 0 for remaining on middle row (road)
+        # -3 for landing on square that is not target square or square not on the middle row
+        reward = 1 if terminated else 0 if self._agent_location[1] == 1 else -3
         observation = self._get_obs()
         info = self._get_info()
         
@@ -125,8 +128,6 @@ class ParkingLot(gym.Env): #by passing env to the ParkingLot class, we are inher
         if self.clock is None and self.render_mode == "human":
             self.clock = pygame.time.Clock()
 
-
-
         # First we draw the target
         pygame.draw.rect(
             canvas,
@@ -136,14 +137,7 @@ class ParkingLot(gym.Env): #by passing env to the ParkingLot class, we are inher
                 (pix_square_size, pix_square_size),
             ),
         )
-        # # Now we draw the agent
-        # pygame.draw.circle(
-        #     canvas,
-        #     (0, 0, 255),
-        #     (self._agent_location + 0.5) * pix_square_size,
-        #     pix_square_size / 3,
-        # )
-        
+
         # Finally, add some gridlines
         for x in range(self.size + 1):
             pygame.draw.line(
