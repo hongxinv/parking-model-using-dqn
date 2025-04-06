@@ -1,8 +1,13 @@
 Currently, the agent is a dumb agent randomly traversing a 3x3 grid parking lot. 
 Its target parking spot is the top right square.
+Each step, it returns its action value, immediate reward, cumulative reward and termination status.
 
 Action Space:
 The agent can only move into directly adjacent squares (UP, DOWN, LEFT, RIGHT) and cannot move diagnolly.
+RIGHT = 0
+UP = 1
+LEFT = 2
+DOWN = 3
 
 Stop Conditions:
 The simulation terminates when either one of two conditions are reached:
