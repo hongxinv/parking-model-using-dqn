@@ -80,7 +80,10 @@ class ParkingLot(gym.Env): #by passing env to the ParkingLot class, we are inher
         # terminated is a boolean of whether agent has reached target
         terminated = np.array_equal(self._agent_location, self._target_location)
         
-        # +1 for correct parking, -1 for time spent, -3 for collisions/being in the wrong parking spot
+        # Rewards
+        # +1 for reaching target square
+        # 0 for remaining on middle row (road)
+        # -3 for landing on square that is not target square or square not on the middle row
         reward = 1 if terminated else 0 if self._agent_location[1] == 1 else -3
         observation = self._get_obs()
         info = self._get_info()
