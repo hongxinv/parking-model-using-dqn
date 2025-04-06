@@ -200,9 +200,9 @@ class ParkingLot(gym.Env): #by passing env to the ParkingLot class, we are inher
 env = ParkingLot(render_mode="human", size=3)  # Enable human rendering
 obs, info = env.reset()
 
+print("Start Simulation")
 cumu_reward = 0
 for _ in range(10):  # Run 10 steps
-    print("Start Simulation")
     action = env.action_space.sample()  # Random action (replace with your policy later)
     obs, reward, terminated, truncated, info = env.step(action)
     env.render()
