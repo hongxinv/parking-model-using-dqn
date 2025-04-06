@@ -18,3 +18,6 @@ Reward System:
   1) If the car reaches the target parking spot (top right square), the agent receives +1 reward.
   2) If the car lands anywhere on the road (any middle row square), the agent receives 0 reward.
   3) If the car lands on any none road or target parking square (collides with other cars), the agent receives -3 reward.
+
+Instructions to run code:
+  Run the parkbot_v1.py file and the simulation will start. The simulation will end once either stop condition is reached.
