@@ -3,16 +3,15 @@ Its target parking spot is the top right square.
 Each step, it returns its action value, immediate reward, cumulative reward and termination status.
 
 Action Space:
-The agent can only move into directly adjacent squares (UP, DOWN, LEFT, RIGHT) and cannot move diagnolly.
-RIGHT = 0
-UP = 1
-LEFT = 2
-DOWN = 3
+The agent can perform one of four actions:
+ 1. Turn Left 90deg
+ 2. Turn Right 90deg
+ 3. Drive Forwards 1 Square
+ 4. Reverse Backwards 1 Square
 
 Stop Conditions:
 The simulation terminates when either one of two conditions are reached:
   1. Agent reaches target spot.
-  2. Step limit is reached (Current step limit is 10 steps).
 
 Reward System:
   1) If the car reaches the target parking spot (top right square), the agent receives +1 reward.
@@ -21,3 +20,5 @@ Reward System:
 
 Instructions to run code:
   Run the parkbot_v1.py file and the simulation will start. The simulation will end once either stop condition is reached.
+
+Explanation
