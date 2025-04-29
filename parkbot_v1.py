@@ -21,27 +21,26 @@ class Actions(Enum):
     UP = 1
     LEFT = 2
     DOWN = 3
-    
+
 # Facing Directions
 class FacingDirection(Enum):
     UP = 0
     RIGHT = 1
     DOWN = 2
     LEFT = 3
-# The direction the agent is facing in
 
+# The direction the agent is facing in
 
 # DQN
 Transition = namedtuple('Transition',
-                        ('state', 'action', 'next_state', 'reward'))
+                        ('state', 'action', 'next_state', 'reward', 'done'))
 
 class ReplayMemory(object):
     def __init__(self, capacity):
         self.memory = deque([], maxlen=capacity)
 
     def push(self, *args):
-        """Save a transition"""
-        self.memory.append(Transition(*args))
+        self.memory.append(Transition(*args)) #saves transition
 
     def sample(self, batch_size):
         return random.sample(self.memory, batch_size)
@@ -50,33 +49,29 @@ class ReplayMemory(object):
         return len(self.memory)
 
 # Simulation
-class ParkingLot(gym.Env): #by passing env to the ParkingLot class, we are inheriting methods from the gym environment cass
-    
+class ParkingLot(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
-    
+
     def __init__(self, render_mode=None, size=3):
         self.size = size
         self.window_size = 512
-        self.blocks = 3  # for example, 3 blocks makes it 9x3
-        
-        # Making sure it shows all the 3x3s insteead of only one of them
+        self.blocks = 3 # (3x3square) x 3times
+
         self.full_width = self.size * self.blocks
         self.tile_size = 64
         self.window_width = self.tile_size * self.full_width
         self.window_height = self.tile_size * self.size
-        
+
         self.render_mode = render_mode
         self.window = None
         self.clock = None
-        
-        # Replace observation space to match full width
+
         self.observation_space = gym.spaces.Dict({
-            "agent": gym.spaces.Box(0, self.full_width - 1, shape=(2,), dtype=int),
-            "target": gym.spaces.Box(0, self.full_width - 1, shape=(2,), dtype=int),
-            "facing": gym.spaces.Discrete(4)
+            "agent": gym.spaces.Box(0, self.full_width - 1, shape=(2,), dtype=int), #agent coords
+            "target": gym.spaces.Box(0, self.full_width - 1, shape=(2,), dtype=int), #target coords
+            "facing": gym.spaces.Discrete(4) #facing direction
         })
 
-        # New directional mapping
         self._direction_vectors = {
             FacingDirection.RIGHT: np.array([1, 0]),
             FacingDirection.DOWN: np.array([0, 1]),
@@ -84,28 +79,26 @@ class ParkingLot(gym.Env): #by passing env to the ParkingLot class, we are inher
             FacingDirection.UP: np.array([0, -1]),
         }
 
-        # Update action space (turn left, turn right, forward, backward)
         self.action_space = spaces.Discrete(4)
-        
-    def _get_obs(self): 
+
+    def _get_obs(self):
         return {
             "agent": self._agent_location,
             "target": self._target_location,
             "facing": np.array([self._facing_direction.value])
-            #agent is agent coords
-            #target is target coords
-            #facing is where the car is facing
         }
-    
-    # returns manhattan distance from the goal, may be useful for future
+
     def _get_info(self):
         return {
             "distance": np.linalg.norm(
                 self._agent_location - self._target_location, ord=1
             )
-        }    
-    
+        }
+
     def step(self, action):
+        prev_distance = np.linalg.norm(
+            self._agent_location - self._target_location, ord=1
+            )
         if action == 0:  # TURN_LEFT
             self._facing_direction = FacingDirection((self._facing_direction.value - 1) % 4)
         elif action == 1:  # TURN_RIGHT
@@ -122,7 +115,11 @@ class ParkingLot(gym.Env): #by passing env to the ParkingLot class, we are inher
                 self._agent_location = new_location
 
         terminated = np.array_equal(self._agent_location, self._target_location)
-        reward = 1 if terminated else 0 if self._agent_location[1] == 1 else -3
+        new_distance = np.linalg.norm(
+            self._agent_location - self._target_location, ord=1
+        )
+        shaping_reward = prev_distance - new_distance  # positive if agent got closer
+        reward = 1 if terminated else shaping_reward - 1  # -1 base penalty to encourage faster solutions
 
         observation = self._get_obs()
         info = self._get_info()
@@ -131,28 +128,28 @@ class ParkingLot(gym.Env): #by passing env to the ParkingLot class, we are inher
             self._render_frame()
 
         return observation, reward, terminated, False, info
-    
+
     def render(self):
         if self.render_mode == "human":
             self._render_frame()
         if self.render_mode == "rgb_array":
             return self._render_frame()
-    
+
     def _render_frame(self):
         if self.window is None and self.render_mode == "human":
             pygame.init()
             pygame.display.init()
             self.window = pygame.display.set_mode(
-            (self.window_width, self.window_height) 
+                (self.window_width, self.window_height)
             )
-            
+
         canvas = pygame.Surface((self.window_width, self.window_height))
         canvas.fill((255, 255, 255))
         pix_square_size = self.tile_size
 
         agent_image = pygame.image.load("car.png")
         angle = {FacingDirection.RIGHT: 0, FacingDirection.DOWN: 90,
-                FacingDirection.LEFT: 180, FacingDirection.UP: 270}[self._facing_direction]
+                 FacingDirection.LEFT: 180, FacingDirection.UP: 270}[self._facing_direction]
         agent_image = pygame.transform.rotate(
             pygame.transform.scale(agent_image, (int(pix_square_size), int(pix_square_size))),
             angle
@@ -182,8 +179,6 @@ class ParkingLot(gym.Env): #by passing env to the ParkingLot class, we are inher
         agent_pos = (self._agent_location * pix_square_size).astype(int)
         canvas.blit(agent_image, agent_pos)
 
-
-        #Drawing the grid-lines
         for y in range(self.size + 1):
             pygame.draw.line(
                 canvas, 0,
@@ -211,7 +206,7 @@ class ParkingLot(gym.Env): #by passing env to the ParkingLot class, we are inher
             return np.transpose(
                 np.array(pygame.surfarray.pixels3d(canvas)), axes=(1, 0, 2)
             )
-    
+
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
 
@@ -220,7 +215,7 @@ class ParkingLot(gym.Env): #by passing env to the ParkingLot class, we are inher
 
         self._target_location = np.array([
             self.np_random.integers(0, self.full_width),
-            self.np_random.choice([0, 2])  # Not on middle row
+            self.np_random.choice([0, 2])
         ])
 
         observation = self._get_obs()
@@ -230,13 +225,12 @@ class ParkingLot(gym.Env): #by passing env to the ParkingLot class, we are inher
             self._render_frame()
 
         return observation, info
-        
+
     def close(self):
         if self.window is not None:
             pygame.display.quit()
             pygame.quit()
 
-# Neural Network
 class DQN(nn.Module):
     def __init__(self, input_dim, output_dim):
         super(DQN, self).__init__()
@@ -247,21 +241,19 @@ class DQN(nn.Module):
             nn.ReLU(),
             nn.Linear(128, output_dim)
         )
-    
+
     def forward(self, x):
         return self.model(x)
-    
+
 def flatten_obs(obs):
     return np.concatenate([obs["agent"], obs["target"], obs["facing"]]).astype(np.float32)
 
-
-def train_parking_dqn(env, episodes=500, gamma=0.99, lr=1e-2, batch_size=64, 
-                      epsilon_start=1.0, epsilon_end=0.01, epsilon_decay=0.995, 
+def train_parking_dqn(env, episodes=1000, gamma=0.99, lr=1e-3, batch_size=64,
+                      epsilon_start=1.0, epsilon_end=0.01, epsilon_decay=0.995,
                       target_update=10):
-    #lr is the learning rate, 
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    obs_dim = 5  # 2 (agent) + 2 (target) + 1 (facing)
+    obs_dim = 5
     n_actions = env.action_space.n
 
     policy_net = DQN(obs_dim, n_actions).to(device)
@@ -270,7 +262,7 @@ def train_parking_dqn(env, episodes=500, gamma=0.99, lr=1e-2, batch_size=64,
     target_net.eval()
 
     optimiser = optim.Adam(policy_net.parameters(), lr=lr)
-    memory = ReplayBuffer(10000)
+    memory = ReplayMemory(10000)
 
     epsilon = epsilon_start
 
@@ -290,7 +282,7 @@ def train_parking_dqn(env, episodes=500, gamma=0.99, lr=1e-2, batch_size=64,
             next_obs, reward, terminated, truncated, _ = env.step(action)
             next_state = torch.tensor(flatten_obs(next_obs), dtype=torch.float32).to(device)
             done = terminated or truncated
-            memory.push((state, action, next_state, reward, done))
+            memory.push(state, action, next_state, reward, done)
             state = next_state
             cum_reward += reward
 
@@ -298,14 +290,14 @@ def train_parking_dqn(env, episodes=500, gamma=0.99, lr=1e-2, batch_size=64,
                 break
 
             if len(memory) >= batch_size:
-                batch = memory.sample(batch_size)
-                states, actions, next_states, rewards, dones = batch
+                transitions = memory.sample(batch_size)
+                batch = Transition(*zip(*transitions))
 
-                states = torch.stack(states)
-                actions = torch.tensor(actions, dtype=torch.int64).unsqueeze(1).to(device)
-                next_states = torch.stack(next_states)
-                rewards = torch.tensor(rewards, dtype=torch.float32).unsqueeze(1).to(device)
-                dones = torch.tensor(dones, dtype=torch.bool).unsqueeze(1).to(device)
+                states = torch.stack(batch.state)
+                actions = torch.tensor(batch.action, dtype=torch.int64).unsqueeze(1).to(device)
+                next_states = torch.stack(batch.next_state)
+                rewards = torch.tensor(batch.reward, dtype=torch.float32).unsqueeze(1).to(device)
+                dones = torch.tensor(batch.done, dtype=torch.bool).unsqueeze(1).to(device)
 
                 q_values = policy_net(states).gather(1, actions)
                 with torch.no_grad():
@@ -324,31 +316,9 @@ def train_parking_dqn(env, episodes=500, gamma=0.99, lr=1e-2, batch_size=64,
 
         print(f"Episode {episode} - Total reward: {cum_reward} - Epsilon: {epsilon:.3f}")
 
-
-# Replay Buffer
-class ReplayBuffer:
-    def __init__(self, capacity):
-        self.buffer = deque(maxlen=capacity)
-    
-    def push(self, transition):
-        self.buffer.append(transition)
-    
-    def sample(self, batch_size):
-        transitions = random.sample(self.buffer, batch_size)
-        states, actions, next_states, rewards, dones = zip(*transitions)
-        return (
-            list(states),
-            list(actions),
-            list(next_states),
-            list(rewards),
-            list(dones)
-        )
-    
-    def __len__(self):
-        return len(self.buffer)
-    
-## Start Simulation ##         
 if __name__ == "__main__":
     print("Starting Simulation")
-    env = ParkingLot(render_mode="human", size=3)  # Use "human" if you want visuals
+    env = ParkingLot(render_mode="human", size=3)
     train_parking_dqn(env)
+
+##test
