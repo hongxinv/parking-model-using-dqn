@@ -113,13 +113,23 @@ class ParkingLot(gym.Env):
                 and 0 <= new_location[1] < self.size
             ):
                 self._agent_location = new_location
+                
+        in_parked_car = (
+            self._agent_location[1] in [0, 2] and # in a non-target square on top or bottom row
+            not np.array_equal(self._agent_location, self._target_location)
+        )
 
         terminated = np.array_equal(self._agent_location, self._target_location)
         new_distance = np.linalg.norm(
             self._agent_location - self._target_location, ord=1
         )
         shaping_reward = prev_distance - new_distance  # positive if agent got closer
-        reward = 1 if terminated else shaping_reward - 1  # -1 base penalty to encourage faster solutions
+        if terminated:
+            reward = 1
+        elif in_parked_car:
+            reward = -5  # strong penalty for bumping into parked cars
+        else:
+            reward = shaping_reward - 1  # normal movement shaping reward
 
         observation = self._get_obs()
         info = self._get_info()
